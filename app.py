@@ -1,6 +1,6 @@
 import streamlit as st
-    import whisper
-    import moviepy.editor as mp
+import whisper
+import moviepy.editor as mp
 import os
 from datetime import timedelta
 
