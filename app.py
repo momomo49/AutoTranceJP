@@ -1,6 +1,6 @@
 import streamlit as st
 import whisper
-import moviepy.editor as mp
+from moviepy.video.io.VideoFileClip import VideoFileClip
 import os
 from datetime import timedelta
 
@@ -9,12 +9,11 @@ model = whisper.load_model("base")
 def is_video_file(filename):
     """ファイルが動画かどうかを判定"""
     video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm']
-    audio_extensions = ['.mp3', '.wav', '.m4a', '.aac', '.flac']
     return any(filename.lower().endswith(ext) for ext in video_extensions)
 
 def video_to_audio(video_path):
     """動画から音声を抽出"""
-    video = mp.VideoFileClip(video_path)
+    video = VideoFileClip(video_path)  # mp. を削除
     audio_path = video_path.replace(os.path.splitext(video_path)[1], '.wav')
     video.audio.write_audiofile(audio_path)
     return audio_path
@@ -38,6 +37,9 @@ st.title("日本語音声認識 SRT生成")
 uploaded_file = st.file_uploader("動画または音声をアップロード", type=["mp4", "avi", "mov", "mkv", "webm", "mp3", "wav", "m4a", "aac", "flac"])
 
 if uploaded_file is not None:
+    # uploadsディレクトリを作成
+    os.makedirs('uploads', exist_ok=True)
+    
     # ファイルを保存
     file_path = f"uploads/{uploaded_file.name}"
     with open(file_path, "wb") as f:
@@ -71,5 +73,10 @@ if uploaded_file is not None:
         )
 
     # 一時ファイルの削除
-    os.remove(file_path)
-    os.remove(srt_path)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    if os.path.exists(srt_path):
+        os.remove(srt_path)
+    if os.path.exists(audio_path) and audio_path != file_path:
+        os.remove(audio_path)
+        
