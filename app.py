@@ -57,11 +57,13 @@ def merge_srt_files(srt_contents):
         merged_srt += f"{text}\n\n"
     return merged_srt
 
-# セッションステートでSRTを保持
+# セッションステートでSRTとファイル名を保持
 if "srt_list" not in st.session_state:
     st.session_state.srt_list = []
 if "file_names" not in st.session_state:
     st.session_state.file_names = []
+if "done_files" not in st.session_state:
+    st.session_state.done_files = []
 
 st.title("1ファイルずつアップロード→SRT統合")
 
@@ -80,6 +82,7 @@ if uploaded_file is not None:
     srt_content = generate_srt(result['segments'], speaker_name=uploaded_file.name)
     st.session_state.srt_list.append(srt_content)
     st.session_state.file_names.append(uploaded_file.name)
+    st.session_state.done_files.append(uploaded_file.name)
     st.success(f"{uploaded_file.name} のSRTを保存しました！")
     os.remove(file_path)
 
