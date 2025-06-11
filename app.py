@@ -78,7 +78,8 @@ if uploaded_file is not None:
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     model = whisper.load_model("base")
-    result = model.transcribe(file_path, language='ja')
+    with st.spinner(f"{uploaded_file.name} をWhisperで文字起こし中..."):
+        result = model.transcribe(file_path, language='ja')
     srt_content = generate_srt(result['segments'], speaker_name=uploaded_file.name)
     st.session_state.srt_list.append(srt_content)
     st.session_state.file_names.append(uploaded_file.name)
