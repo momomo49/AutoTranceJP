@@ -1,22 +1,33 @@
 import streamlit as st
 import whisper
-from moviepy.video.io.VideoFileClip import VideoFileClip
+from moviepy.editor import AudioFileClip
 import os
 from datetime import timedelta
 
 model = whisper.load_model("base")
 
-def is_video_file(filename):
-    """ファイルが動画かどうかを判定"""
-    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm']
-    return any(filename.lower().endswith(ext) for ext in video_extensions)
-
-def video_to_audio(video_path):
-    """動画から音声を抽出"""
-    video = VideoFileClip(video_path)
-    audio_path = video_path.replace(os.path.splitext(video_path)[1], '.wav')
-    video.audio.write_audiofile(audio_path)
-    return audio_path
+def compress_audio(audio_path, target_size_mb=200):
+    """音声ファイルを圧縮"""
+    audio_clip = AudioFileClip(audio_path)
+    
+    # ファイルサイズを計算
+    original_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
+    
+    # 圧縮が必要な場合
+    if original_size_mb > target_size_mb:
+        # 音量を少し下げる
+        audio_clip = audio_clip.audio_fadein(0.1).audio_fadeout(0.1)
+        audio_clip = audio_clip.volumex(0.8)
+        
+        # 新しいファイル名
+        compressed_audio_path = audio_path.replace(os.path.splitext(audio_path)[1], '_compressed.wav')
+        
+        # 音声ファイルを保存
+        audio_clip.write_audiofile(compressed_audio_path, bitrate="64k")
+        
+        return compressed_audio_path
+    else:
+        return audio_path
 
 def generate_srt(segments, speaker_name=""):
     """Whisperの結果をSRT形式に変換"""
@@ -35,58 +46,6 @@ def generate_srt(segments, speaker_name=""):
         srt_content += f"{text}\n\n"
     
     return srt_content
-
-def parse_srt_time(time_str):
-    """SRT時間形式を秒に変換"""
-    time_str = time_str.replace(',', '.')
-    h, m, s = time_str.split(':')
-    return int(h) * 3600 + int(m) * 60 + float(s)
-
-def merge_srt_files(srt_contents):
-    """複数のSRTファイルを時間軸で統合"""
-    all_segments = []
-    
-    for srt_content in srt_contents:
-        lines = srt_content.strip().split('\n')
-        i = 0
-        while i < len(lines):
-            if lines[i].strip().isdigit():
-                # 番号行
-                if i + 2 < len(lines):
-                    time_line = lines[i + 1]
-                    text_line = lines[i + 2]
-                    
-                    # 時間を解析
-                    start_str, end_str = time_line.split(' --> ')
-                    start_time = parse_srt_time(start_str.strip())
-                    end_time = parse_srt_time(end_str.strip())
-                    
-                    all_segments.append({
-                        'start': start_time,
-                        'end': end_time,
-                        'text': text_line.strip()
-                    })
-                    i += 3
-                else:
-                    i += 1
-            else:
-                i += 1
-    
-    # 開始時間でソート
-    all_segments.sort(key=lambda x: x['start'])
-    
-    # 統合されたSRTを生成
-    merged_srt = ""
-    for i, segment in enumerate(all_segments):
-        start = str(timedelta(seconds=segment['start']))
-        end = str(timedelta(seconds=segment['end']))
-        text = segment['text']
-        
-        merged_srt += f"{i+1}\n"
-        merged_srt += f"{start} --> {end}\n"
-        merged_srt += f"{text}\n\n"
-    
-    return merged_srt
 
 st.title("複数音声ファイル → 個別SRT → 統合SRT")
 
@@ -112,9 +71,14 @@ if uploaded_files:
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
-        # 動画の場合は音声を抽出
-        if is_video_file(uploaded_file.name):
-            audio_path = video_to_audio(file_path)
+        # ファイルサイズを確認
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        
+        # ファイルサイズが200MBを超える場合は圧縮
+        if file_size_mb > 200:
+            st.write(f"{uploaded_file.name} はファイルサイズが大きいため、圧縮します")
+            compressed_audio_path = compress_audio(file_path)
+            audio_path = compressed_audio_path
         else:
             audio_path = file_path
         
