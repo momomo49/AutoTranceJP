@@ -1,6 +1,6 @@
 import streamlit as st
 import whisper
-from moviepy.editor import AudioFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 import os
 from datetime import timedelta
 import subprocess
