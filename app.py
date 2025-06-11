@@ -84,8 +84,13 @@ if uploaded_file is not None:
     st.session_state.srt_list.append(srt_content)
     st.session_state.file_names.append(uploaded_file.name)
     st.session_state.done_files.append(uploaded_file.name)
-    st.success(f"{uploaded_file.name} のSRTを保存しました！")
+    st.success(f"{uploaded_file.name} の文字起こしが完了しました！")
     os.remove(file_path)
+
+    if st.session_state.done_files:
+        st.info("文字起こし済みファイル：")
+        for name in st.session_state.done_files:
+            st.write(f"✅ {name}")
 
 # 保存済みSRTのリスト表示と個別ダウンロード
 if st.session_state.file_names:
