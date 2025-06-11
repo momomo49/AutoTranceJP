@@ -89,7 +89,7 @@ if st.session_state.file_names:
     for name, srt_content in zip(st.session_state.file_names, st.session_state.srt_list):
         st.download_button(
             label=f"{name} のSRTをダウンロード",
-            data=srt_content,
+            data=srt_content.encode("utf-8"),
             file_name=f"{os.path.splitext(name)[0]}.srt",
             mime="text/plain"
         )
@@ -99,7 +99,7 @@ if st.button("保存済みSRTを統合してダウンロード"):
     merged_srt = merge_srt_files(st.session_state.srt_list)
     st.download_button(
         label="統合SRTをダウンロード",
-        data=merged_srt,
+        data=merged_srt.encode("utf-8"),
         file_name="merged_subtitles.srt",
         mime="text/plain"
     )
