@@ -1,33 +1,30 @@
 import streamlit as st
 import whisper
-from moviepy.video.io.VideoFileClip import VideoFileClip
+from moviepy.editor import AudioFileClip
 import os
 from datetime import timedelta
+import subprocess
 
 model = whisper.load_model("base")
 
-def compress_audio(audio_path, target_size_mb=200):
-    """音声ファイルを圧縮"""
-    audio_clip = AudioFileClip(audio_path)
-    
-    # ファイルサイズを計算
-    original_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
-    
-    # 圧縮が必要な場合
-    if original_size_mb > target_size_mb:
-        # 音量を少し下げる
-        audio_clip = audio_clip.audio_fadein(0.1).audio_fadeout(0.1)
-        audio_clip = audio_clip.volumex(0.8)
-        
-        # 新しいファイル名
-        compressed_audio_path = audio_path.replace(os.path.splitext(audio_path)[1], '_compressed.wav')
-        
-        # 音声ファイルを保存
-        audio_clip.write_audiofile(compressed_audio_path, bitrate="64k")
-        
-        return compressed_audio_path
-    else:
-        return audio_path
+def compress_audio_ffmpeg(input_path, output_path, target_bitrate="64k"):
+    """
+    ffmpegで音声ファイルを圧縮
+    input_path: 元の音声ファイル
+    output_path: 圧縮後のファイル
+    target_bitrate: 目標ビットレート（例: "64k"）
+    """
+    command = [
+        "ffmpeg",
+        "-y",  # 上書き
+        "-i", input_path,
+        "-b:a", target_bitrate,
+        output_path
+    ]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg error: {result.stderr.decode()}")
+    return output_path
 
 def generate_srt(segments, speaker_name=""):
     """Whisperの結果をSRT形式に変換"""
@@ -76,9 +73,14 @@ if uploaded_files:
         
         # ファイルサイズが200MBを超える場合は圧縮
         if file_size_mb > 200:
-            st.write(f"{uploaded_file.name} はファイルサイズが大きいため、圧縮します")
-            compressed_audio_path = compress_audio(file_path)
-            audio_path = compressed_audio_path
+            st.write(f"{uploaded_file.name} はファイルサイズが大きいため、ffmpegで圧縮します")
+            compressed_path = file_path.replace(os.path.splitext(file_path)[1], "_compressed.mp3")
+            try:
+                compress_audio_ffmpeg(file_path, compressed_path, target_bitrate="64k")
+                audio_path = compressed_path
+            except Exception as e:
+                st.error(f"ffmpeg 圧縮エラー: {e}")
+                continue
         else:
             audio_path = file_path
         
